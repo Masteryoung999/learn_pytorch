@@ -1,11 +1,51 @@
 import torch
+import torchvision
+from PIL import Image
+from torch import nn
 
-outputs = torch.tensor([[0.1, 0.2],
-                        [0.04, 0.4]])
+device = torch.device("mps")
+images_path = "./images/airplane.png"
+image = Image.open(images_path)
+print(image)
+image = image.convert('RGB')
 
-print(outputs.argmax(0)) # 填1就是横向
+transform = torchvision.transforms.Compose([torchvision.transforms.Resize((32, 32)),
+                                            torchvision.transforms.ToTensor()])
 
-preds = outputs.argmax(1)
-targets = torch.tensor([0, 1])
+image = transform(image)
+image = image.to(device)
+print(image.shape)
 
-print((preds == targets).sum())
+class Tudui(nn.Module):
+    def __init__(self):
+        super(Tudui, self).__init__()
+        self.model = nn.Sequential(
+            nn.Conv2d(3, 32, 5, 1, 2),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU(),
+            nn.Conv2d(32, 32, 5, 1, 2),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, 5, 1, 2),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(64 * 4 * 4, 64),
+            nn.Linear(64, 10),
+            nn.Softmax(dim=1)
+        )
+
+    def forward(self, x):
+        x = self.model(x)
+        return x
+
+model = torch.load("tudui_31.pth", map_location=torch.device('mps'))
+print(model)
+image = torch.reshape(image, (1, 3, 32, 32))
+
+model.eval()
+with torch.no_grad():
+    output = model(image)
+print(output)
+
+print(output.argmax(1))
